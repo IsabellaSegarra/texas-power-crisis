@@ -1,0 +1,137 @@
+---
+title: "Investigating the 2021 Texas Power Crisis"
+subtitle: "EDS-223 Assignment 3"
+author: "Isabella Segarra"
+date: 10-19-2025
+format: 
+  pdf: default 
+  html: default
+theme: pandoc
+execute: 
+  warning: false
+  message: false
+---
+
+# TITLE 
+
+[ADD README SCREENSHOT]
+
+### Objective
+In this project, I investigated....
+
+## Environment Set-up 
+```{r}
+#| output: false
+#| message: false
+
+# Load relevant libraries
+library(sf) # For vector data
+library(stars) # For raster data 
+library(tmap) # For static and interactive maps
+library(here) # For importing data 
+library(tidyverse) # For data cleaning
+library(dplyr) # For filtering data 
+library(paletteer) # For pretty colors 
+library(testthat) # For efficient workflows 
+
+```
+
+## Data Import
+The data I am using in this project includes data from NASA's Worldview for night light data, data for roads and houses from OpenStreetMap (OSM), and socieconomic data from the U.S. Census Bureau's American Community Survey. 
+
+### Night lights data import
+This raster data is from NASA's Worldview tool, distributed through NASA's Level-1 and Atmospheric Archive & Distribution System Distributed Active Archive Center (LAADS DAAC). It is a `.tif` file that contains 10x10 degree tiles. I will be importing four data files from the `VNP46A1` folder for night light data from the days surrounding the storm. 
+```{r}
+
+# Import tile h08v05 from 2021-02-07
+nl_h08v05_07 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021038.h08v05.001.2021039064328.tif"))
+
+# Import tile h08v06 from 2021-02-07
+nl_h08v06_07 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021038.h08v06.001.2021039064329.tif"))
+
+# Import tile h08v05 from 2021-02-16
+nl_h08v05_16 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021047.h08v05.001.2021048091106.tif"))
+
+# Import tile h08v06 from 2021-02-16
+nl_h08v06_16 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021047.h08v05.001.2021048091106.tif"))
+
+```
+
+### Roads data import
+This vector data is from OSM, processed with the help of a third party site (CITE) to produce a shapefile of all Texas highways. This data contains 58,6056 observations with 11 variables. 
+```{r}
+# Import roads data
+roads <- read_sf(here("data", "gis_osm_roads_free_1.gpkg"))
+
+```
+
+### House data import
+This vector data is also from OSM, processed with the helpf of a third party(CITE) to produce a shapefile of houses in the Houseton metropolitan area. This data contains 49,8795 observations with 6 variables. 
+```{r}
+# Import house data 
+houses <- read_sf(here("data", "gis_osm_buildings_a_free_1.gpkg"))
+
+```
+
+## Socieconomic data import
+This data is from  U.S. Census Bureau’s American Community Survey (CITE) 2019 census. This Geodatabase (gdb) data contains 5,365 observations with 719 variables.  
+```{r}
+# Import socioeconomic data REDO!!!
+socioeco <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"))
+
+
+```
+
+```{r}
+print(st_crs(houses))
+print(st_crs(roads))
+print(st_crs(socioeco))
+```
+
+
+## Data wranlging
+
+### CRS Matching
+In order to work with all datasets, I need to confirm that the Coordinate Refrence Systems (CRS) match. 
+
+```{r}
+# ......Check CRS of individual datasets ......
+print(st_crs(houses)$epsg) 
+print(st_crs(roads)$epsg)
+print(st_crs(socioeco)$epsg)
+
+# Night light data 
+print(st_crs(nl_h08v05_07)$epsg)
+print(st_crs(nl_h08v06_07)$epsg)
+print(st_crs(nl_h08v05_16)$epsg)
+print(st_crs(nl_h08v06_07)$epsg)
+
+```
+
+```{r}
+
+if(st_crs(houses) == st_crs(roads)) {
+  print("coordinate reference systems match")
+} else{
+  print("coordinate reference systems do NOT match")
+} 
+
+if(st_crs(roads) == st_crs(socioeco)) {
+  print("coordinate reference systems match")
+} else{
+  print("coordinate reference systems do NOT match")
+} 
+
+if(st_crs(socieco) == st_crs(socioeco)) {
+  print("coordinate reference systems match")
+} else{
+  print("coordinate reference systems do NOT match")
+} 
+```
+
+## Phase 1: Create blackout mask 
+In this phase, I will identifyt places that experienced a blackout by creating a mask. 
+```{r}
+
+```
+
