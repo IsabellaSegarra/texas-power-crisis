@@ -15,6 +15,7 @@ execute:
 # TITLE 
 
 [ADD README SCREENSHOT]
+![](filepath)
 
 ### Objective
 In this project, I investigated....
@@ -58,36 +59,28 @@ nl_h08v06_16 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021047.h08v05.001.2
 ```
 
 ### Roads data import
-This vector data is from OSM, processed with the help of a third party site (CITE) to produce a shapefile of all Texas highways. This data contains 58,6056 observations with 11 variables. 
+This vector data is from OSM, processed with the help of a third party site (CITE) to produce a shapefile of all Texas highways. This data contains 6,085 observations with 11 variables. 
 ```{r}
-# Import roads data
-roads <- read_sf(here("data", "gis_osm_roads_free_1.gpkg"))
+# Import roads data with SQL query to filter for only highways 
+roads <- read_sf(here("data", "gis_osm_roads_free_1.gpkg"), query = "SELECT * FROM gis_osm_roads_free_1 WHERE fclass='motorway'")
 
 ```
 
 ### House data import
-This vector data is also from OSM, processed with the helpf of a third party(CITE) to produce a shapefile of houses in the Houseton metropolitan area. This data contains 49,8795 observations with 6 variables. 
+This vector data is also from OSM, processed with the helpf of a third party(CITE) to produce a shapefile of houses in the Houseton metropolitan area. This data contains 475941 observations with 6 variables. 
 ```{r}
-# Import house data 
-houses <- read_sf(here("data", "gis_osm_buildings_a_free_1.gpkg"))
+# Import house data with SQL query to filter for selected building types
+houses <- read_sf(here("data", "gis_osm_buildings_a_free_1.gpkg"), query = "SELECT * FROM gis_osm_buildings_a_free_1 WHERE (type IS NULL AND name IS NULL) OR type in ('residential', 'apartments', 'house', 'static_caravan', 'detached')")
 
 ```
 
 ## Socieconomic data import
-This data is from  U.S. Census Bureau’s American Community Survey (CITE) 2019 census. This Geodatabase (gdb) data contains 5,365 observations with 719 variables.  
+This data is from  U.S. Census Bureau’s American Community Survey (CITE) 2019 census. This Geodatabase (gdb) data contains data for Texas with  5,365 observations and 16 variables.  
 ```{r}
 # Import socioeconomic data REDO!!!
-socioeco <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"))
-
+socioeco <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), layer = "ACS_2019_5YR_TRACT_48_TEXAS")
 
 ```
-
-```{r}
-print(st_crs(houses))
-print(st_crs(roads))
-print(st_crs(socioeco))
-```
-
 
 ## Data wranlging
 
@@ -107,30 +100,25 @@ print(st_crs(nl_h08v05_16)$epsg)
 print(st_crs(nl_h08v06_07)$epsg)
 
 ```
+Since the CRS of 'socioeco' is inconsisent with the CRSs of the rest of the data, I will transform this data to match the rest of the data. 
 
 ```{r}
+# ......Transform CRS of 'socioeco' ......
 
-if(st_crs(houses) == st_crs(roads)) {
+# I only need to use the CRS of one object to convert 
+socieoeco <- st_transform(socioeco, crs = st_crs(roads))
+
+# Check if CRSs matched
+if(st_crs(socieoeco) == st_crs(roads)) {
   print("coordinate reference systems match")
 } else{
   print("coordinate reference systems do NOT match")
 } 
 
-if(st_crs(roads) == st_crs(socioeco)) {
-  print("coordinate reference systems match")
-} else{
-  print("coordinate reference systems do NOT match")
-} 
-
-if(st_crs(socieco) == st_crs(socioeco)) {
-  print("coordinate reference systems match")
-} else{
-  print("coordinate reference systems do NOT match")
-} 
 ```
 
 ## Phase 1: Create blackout mask 
-In this phase, I will identifyt places that experienced a blackout by creating a mask. 
+In this phase, I will identify places that experienced a blackout by creating a mask. 
 ```{r}
 
 ```
