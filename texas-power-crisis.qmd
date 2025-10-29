@@ -27,7 +27,8 @@ In this project, I investigated....
 
 # Load relevant libraries
 library(sf) # For vector data
-library(stars) # For raster data 
+library(stars) # For raster data
+library(terra) # raster handling
 library(tmap) # For static and interactive maps
 library(here) # For importing data 
 library(tidyverse) # For data cleaning
@@ -88,16 +89,23 @@ socioeco <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), layer = "AC
 In order to work with all datasets, I need to confirm that the Coordinate Refrence Systems (CRS) match. 
 
 ```{r}
-# ......Check CRS of individual datasets ......
-print(st_crs(houses)$epsg) 
-print(st_crs(roads)$epsg)
-print(st_crs(socioeco)$epsg)
+# ......Check CRS of individual datasets (TURN INTO for loop)......
 
-# Night light data 
-print(st_crs(nl_h08v05_07)$epsg)
-print(st_crs(nl_h08v06_07)$epsg)
-print(st_crs(nl_h08v05_16)$epsg)
-print(st_crs(nl_h08v06_07)$epsg)
+# Create list of the datasets
+datasets <- list(houses, roads, socioeco,nl_h08v05_07, nl_h08v06_07, nl_h08v05_16, nl_h08v06_16)
+
+
+# Loop through each dataset and print its CRS
+
+for (i in seq_along(datasets)) {
+  epsg <- st_crs(datasets[[i]])$epsg
+  print(epsg)
+  if (epsg != 4326) {
+    print ("Coordinate reference systems do NOT match")
+  }
+}
+
+# MAKE IT PRINT WITH THE NAMES OF THE DATA 
 
 ```
 Since the CRS of 'socioeco' is inconsisent with the CRSs of the rest of the data, I will transform this data to match the rest of the data. 
@@ -105,7 +113,7 @@ Since the CRS of 'socioeco' is inconsisent with the CRSs of the rest of the data
 ```{r}
 # ......Transform CRS of 'socioeco' ......
 
-# I only need to use the CRS of one object to convert 
+# I only need to use the CRS of one object to convert. Roads is easy to spell.  
 socieoeco <- st_transform(socioeco, crs = st_crs(roads))
 
 # Check if CRSs matched
@@ -116,10 +124,88 @@ if(st_crs(socieoeco) == st_crs(roads)) {
 } 
 
 ```
+### Check for Invalid geometries
+Check for invalid geometries in our three datasets (roads, houses, socieoeco) that contain a geometry type (e.g, multiploygon). 
+```{r}
+#......Checking for invalid geometries......
+
+# Create a dataset with only the data that contains geometries
+datasets_geom = list(roads, houses, socieoeco)
+
+# Check if there are invalid geometries 
+for (i in seq_along(datasets_geom)) {
+  which(!st_is_valid(datasets_geom[[i]]))
+  print("There are NO invalid geometries")
+}
+```
 
 ## Phase 1: Create blackout mask 
 In this phase, I will identify places that experienced a blackout by creating a mask. 
+
+### Create raster
 ```{r}
+#......Create raster for 2021-02-07 tiles...... # THIS CAN ALSO BE A FOR LOOP
+
+# Create raster object for tile h08v05
+nl_05_07_rast <- rast(nl_h08v05_07)
+
+# Confirm class of object 
+class(nl_05_07_rast)
+
+# Create raster object for tile h08v06
+nl_06_07_rast <- rast(nl_h08v06_07)
+
+# Confirm class of object
+class(nl_06_07_rast)
+
+# Clear up environment for efficiency 
+rm(list = c("nl_h08v05_07", "nl_h08v06_07"))
 
 ```
 
+```{r}
+#......Create raster for 2021-02-16 tiles ......
+
+# Create raster object for tile h08v05
+nl_05_16_rast <- rast(nl_h08v05_16)
+
+# Confirm class of object 
+class(nl_05_16_rast)
+
+# Create raster object for tile h08v06
+nl_06_16_rast <- rast(nl_h08v06_16)
+
+# Confirm class of object
+class(nl_06_16_rast)
+
+# Clear up environment for efficiency 
+rm(list = c("nl_h08v05_16", "nl_h08v06_16"))
+
+```
+### Scale tiles 
+
+### Merge tiles 
+```{r}
+#......Night light change  ......
+
+nl_07 <- merge(nl_05_07_rast, nl_06_07_rast)
+
+nl_16 <- merge(nl_05_16_rast, nl_06_16_rast)
+
+dif_nl <- nl_07 - nl_16
+
+tm_shape(nl_07) +
+  tm_raster()
+```
+
+### Update tiles extent
+```{r}
+if(ext(nl_07) == ext(nl_16)){
+  print("extents match")
+} else{
+  print("extents do not match")
+}
+```
+
+
+### Change in night light intensity
