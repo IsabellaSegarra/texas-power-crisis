@@ -62,7 +62,7 @@ nl_h08v06_16 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021047.h08v05.001.2
 ### Roads data import
 This vector data is from OSM, processed with the help of a third party site (CITE) to produce a shapefile of all Texas highways. This data contains 6,085 observations with 11 variables. 
 ```{r}
-# Import roads data with SQL query to filter for only highways 
+# Import roads data with SQL query to filter for only highways (use st_read)
 roads <- read_sf(here("data", "gis_osm_roads_free_1.gpkg"), query = "SELECT * FROM gis_osm_roads_free_1 WHERE fclass='motorway'")
 
 ```
@@ -70,7 +70,7 @@ roads <- read_sf(here("data", "gis_osm_roads_free_1.gpkg"), query = "SELECT * FR
 ### House data import
 This vector data is also from OSM, processed with the helpf of a third party(CITE) to produce a shapefile of houses in the Houseton metropolitan area. This data contains 475941 observations with 6 variables. 
 ```{r}
-# Import house data with SQL query to filter for selected building types
+# Import house data with SQL query to filter for selected building types (use st_read)
 houses <- read_sf(here("data", "gis_osm_buildings_a_free_1.gpkg"), query = "SELECT * FROM gis_osm_buildings_a_free_1 WHERE (type IS NULL AND name IS NULL) OR type in ('residential', 'apartments', 'house', 'static_caravan', 'detached')")
 
 ```
@@ -78,7 +78,7 @@ houses <- read_sf(here("data", "gis_osm_buildings_a_free_1.gpkg"), query = "SELE
 ## Socieconomic data import
 This data is from  U.S. Census Bureau’s American Community Survey (CITE) 2019 census. This Geodatabase (gdb) data contains data for Texas with  5,365 observations and 16 variables.  
 ```{r}
-# Import socioeconomic data REDO!!!
+# Import socioeconomic data 
 socioeco <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), layer = "ACS_2019_5YR_TRACT_48_TEXAS")
 
 ```
@@ -89,7 +89,7 @@ socioeco <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), layer = "AC
 In order to work with all datasets, I need to confirm that the Coordinate Refrence Systems (CRS) match. 
 
 ```{r}
-# ......Check CRS of individual datasets (TURN INTO for loop)......
+# ......Check CRS of individual datasets......
 
 # Create list of the datasets
 datasets <- list(houses, roads, socioeco,nl_h08v05_07, nl_h08v06_07, nl_h08v05_16, nl_h08v06_16)
@@ -188,18 +188,42 @@ rm(list = c("nl_h08v05_16", "nl_h08v06_16"))
 ```{r}
 #......Night light change  ......
 
+# USE st_mosaic()
+
+# Merge night light 07 
 nl_07 <- merge(nl_05_07_rast, nl_06_07_rast)
 
 nl_16 <- merge(nl_05_16_rast, nl_06_16_rast)
 
-dif_nl <- nl_07 - nl_16
+dif_nl <- nl_16 - nl_07 > 200 # this will produce a conditional and any object that is an NA is more than 200 
+# True - more than 200, False - less than 200 
 
-tm_shape(nl_07) +
-  tm_raster()
+# NA by indexing 
+
+# difference mask 
+
+# st_as_sf()
+
+# st_make_valid (check with sstisvalid first)
+
+# vector difference mask 
+
+# crop with st_bbox (convert w/ st_as_sf) or with st_points (more tedious) 
+
+# use st_crop or st_interscts to join
+
 ```
-
 ### Update tiles extent
 ```{r}
+print(st_bbox(nl_07))
+print(st_bbox(nl_16))
+
+# DO alter 
+nl_16 <- rast(xmin = -113.3, xmax = -113, ymin = 37.2, ymax = 37.9,
+            resolution = 0.3,
+            vals = 1)
+
+
 if(ext(nl_07) == ext(nl_16)){
   print("extents match")
 } else{
@@ -209,3 +233,47 @@ if(ext(nl_07) == ext(nl_16)){
 
 
 ### Change in night light intensity
+
+## Highways
+```{r}
+# identity areas within 200 m of all hgiways (use st_buffer)
+
+# use st_union to combine original roads and buffer 
+
+# find areas that experienced blackouts that are further than 200 m  
+  # can use sst_disjoin and st_difference 
+
+# use the output of st_union 
+
+```
+
+
+## Buildings
+```{r}
+# overlap with areas that are non-highway and experience blackout
+
+    # can use st_intersection, st_within, st_contains (write more about your justificaiton for using some, ex:    st_intersection will consider homes on the edge, within and contains doe snot )
+
+# get homes that experienced blackount 
+
+
+```
+
+## Combine layers of socieco
+```{r}
+# THIS STEP HAPPENS AFTER  FINIDNT HE HOMES 
+
+# use the sociecon to know where home are 
+# interest in census track and mean income 
+
+# layer 1 (geoms) & layer 2 (income) 
+
+# left join them on GEO ID (make sure same CRS) 
+  # use st_within or st_interesects 
+
+# data wranglign to summarize median income by census tract 
+
+# to find those that are not expe blackouts, go back to joining them 
+```
+
+
