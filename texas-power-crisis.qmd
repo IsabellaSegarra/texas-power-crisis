@@ -42,7 +42,7 @@ library(testthat) # For efficient workflows
 The data I am using in this project includes data from NASA's Worldview for night light data, data for roads and houses from OpenStreetMap (OSM), and socieconomic data from the U.S. Census Bureau's American Community Survey. 
 
 ### Night lights data import
-This raster data is from NASA's Worldview tool, distributed through NASA's Level-1 and Atmospheric Archive & Distribution System Distributed Active Archive Center (LAADS DAAC). It is a `.tif` file that contains 10x10 degree tiles. I will be importing four data files from the `VNP46A1` folder for night light data from the days surrounding the storm. 
+This raster data is from NASA's Worldview tool, distributed through NASA's Level-1 and Atmospheric Archive & Distribution System Distributed Active Archive Center (LAADS DAAC). It is a `.tif` file that contains 10x10 degree tiles. I will be importing four data files from the `VNP46A1` folder for night light data from the days surrounding the storm as stars. 
 ```{r}
 
 # Import tile h08v05 from 2021-02-07
@@ -55,7 +55,7 @@ nl_h08v06_07 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021038.h08v06.001.2
 nl_h08v05_16 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021047.h08v05.001.2021048091106.tif"))
 
 # Import tile h08v06 from 2021-02-16
-nl_h08v06_16 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021047.h08v05.001.2021048091106.tif"))
+nl_h08v06_16 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021047.h08v06.001.2021048091105.tif"))
 
 ```
 
@@ -79,7 +79,13 @@ houses <- read_sf(here("data", "gis_osm_buildings_a_free_1.gpkg"), query = "SELE
 This data is from  U.S. Census Bureau’s American Community Survey (CITE) 2019 census. This Geodatabase (gdb) data contains data for Texas with  5,365 observations and 16 variables.  
 ```{r}
 # Import socioeconomic data 
-socioeco <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), layer = "ACS_2019_5YR_TRACT_48_TEXAS")
+
+socioeco_geom <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), layer = "ACS_2019_5YR_TRACT_48_TEXAS")
+
+socioeco_income <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), layer = "X19_INCOME")
+
+# View layers with 'st_layers'
+st_layers(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"))
 
 ```
 
@@ -91,9 +97,8 @@ In order to work with all datasets, I need to confirm that the Coordinate Refren
 ```{r}
 # ......Check CRS of individual datasets......
 
-# Create list of the datasets
-datasets <- list(houses, roads, socioeco,nl_h08v05_07, nl_h08v06_07, nl_h08v05_16, nl_h08v06_16)
-
+# Create list of the datasets that have geometries
+datasets <- list(houses, roads, socioeco_geom, nl_h08v05_07, nl_h08v06_07, nl_h08v05_16, nl_h08v06_16)
 
 # Loop through each dataset and print its CRS
 
@@ -108,16 +113,16 @@ for (i in seq_along(datasets)) {
 # MAKE IT PRINT WITH THE NAMES OF THE DATA 
 
 ```
-Since the CRS of 'socioeco' is inconsisent with the CRSs of the rest of the data, I will transform this data to match the rest of the data. 
+Since the CRS of 'socioeco_geom' is inconsisent with the CRSs of the rest of the data, I will transform this data to match the rest of the data. 
 
 ```{r}
 # ......Transform CRS of 'socioeco' ......
 
 # I only need to use the CRS of one object to convert. Roads is easy to spell.  
-socieoeco <- st_transform(socioeco, crs = st_crs(roads))
+socioeco_geom <- st_transform(socioeco_geom, crs = st_crs(roads))
 
 # Check if CRSs matched
-if(st_crs(socieoeco) == st_crs(roads)) {
+if(st_crs(socioeco_geom) == st_crs(roads)) {
   print("coordinate reference systems match")
 } else{
   print("coordinate reference systems do NOT match")
@@ -125,12 +130,12 @@ if(st_crs(socieoeco) == st_crs(roads)) {
 
 ```
 ### Check for Invalid geometries
-Check for invalid geometries in our three datasets (roads, houses, socieoeco) that contain a geometry type (e.g, multiploygon). 
+Check for invalid geometries in our three datasets (roads, houses, socieoeco_geom) that contain a geometry type (e.g, multiploygon). 
 ```{r}
 #......Checking for invalid geometries......
 
 # Create a dataset with only the data that contains geometries
-datasets_geom = list(roads, houses, socieoeco)
+datasets_geom = list(roads, houses, socioeco_geom)
 
 # Check if there are invalid geometries 
 for (i in seq_along(datasets_geom)) {
@@ -139,63 +144,49 @@ for (i in seq_along(datasets_geom)) {
 }
 ```
 
-## Phase 1: Create blackout mask 
-In this phase, I will identify places that experienced a blackout by creating a mask. 
-
-### Create raster
+### Merge tiles 
+EXPLAIN
 ```{r}
-#......Create raster for 2021-02-07 tiles...... # THIS CAN ALSO BE A FOR LOOP
+#......Night light change ......
 
-# Create raster object for tile h08v05
-nl_05_07_rast <- rast(nl_h08v05_07)
+# Merge night light for 2021-02-07
+nl_07 <- st_mosaic(nl_h08v05_07, nl_h08v06_07)
 
-# Confirm class of object 
-class(nl_05_07_rast)
+# Merge night light for 2021-02-16
+nl_16 <- st_mosaic(nl_h08v05_16, nl_h08v06_16)
 
-# Create raster object for tile h08v06
-nl_06_07_rast <- rast(nl_h08v06_07)
-
-# Confirm class of object
-class(nl_06_07_rast)
+# Confirm class of tiles
+print(class(nl_07))
+print(class(nl_16))
 
 # Clear up environment for efficiency 
 rm(list = c("nl_h08v05_07", "nl_h08v06_07"))
-
-```
-
-```{r}
-#......Create raster for 2021-02-16 tiles ......
-
-# Create raster object for tile h08v05
-nl_05_16_rast <- rast(nl_h08v05_16)
-
-# Confirm class of object 
-class(nl_05_16_rast)
-
-# Create raster object for tile h08v06
-nl_06_16_rast <- rast(nl_h08v06_16)
-
-# Confirm class of object
-class(nl_06_16_rast)
-
-# Clear up environment for efficiency 
 rm(list = c("nl_h08v05_16", "nl_h08v06_16"))
 
 ```
-### Scale tiles 
 
-### Merge tiles 
+
+## Maps 1 and 2: Night Lights 
+In this section, I mapped the night lights for February 2nd and 16th. 
 ```{r}
-#......Night light change  ......
+# Create bounding box for Houston area 
+bbox_houston <- c(xmin = -96.5, xmax = -94.5, ymin = 29, ymax = 30.5)
+```
 
-# USE st_mosaic()
 
-# Merge night light 07 
-nl_07 <- merge(nl_05_07_rast, nl_06_07_rast)
+```{r}
+# Mapping 2021-02-07
 
-nl_16 <- merge(nl_05_16_rast, nl_06_16_rast)
+tm_shape(nl_07) +
+  tm_raster() 
 
-dif_nl <- nl_16 - nl_07 > 200 # this will produce a conditional and any object that is an NA is more than 200 
+```
+
+
+```{r}
+
+
+# this will produce a conditional and any object that is an NA is more than 200 
 # True - more than 200, False - less than 200 
 
 # NA by indexing 
@@ -213,26 +204,56 @@ dif_nl <- nl_16 - nl_07 > 200 # this will produce a conditional and any object t
 # use st_crop or st_interscts to join
 
 ```
-### Update tiles extent
+
+### Find blackouts 
+Find blackout regions by defining that blackout regions more than 200 nW cm-2sr-1 experienced a blackout and those more than 200 nW cm-2sr-1 did not experience a blackout. 
 ```{r}
-print(st_bbox(nl_07))
-print(st_bbox(nl_16))
+#......Vector difference mask ......
 
-# DO alter 
-nl_16 <- rast(xmin = -113.3, xmax = -113, ymin = 37.2, ymax = 37.9,
-            resolution = 0.3,
-            vals = 1)
+# Create conditional where Trues are regions that experienced a blackout and 
+blackout <- (nl_16 - nl_07) > 200
 
+# Reassign FALSE as NA
+blackout[blackout == FALSE] <- NA
 
-if(ext(nl_07) == ext(nl_16)){
-  print("extents match")
-} else{
-  print("extents do not match")
+# Turn into vector object (DOUBLE CJHECK IF U NEED TO DO THIS) 
+blackout <- st_as_sf(blackout)
+
+# Check for invalid geometries
+if (any(!st_is_valid(blackout))) {
+  blackout <- st_make_valid(blackout)
+} else if (nrow(blackout) == 0) {
+  print("No geometries found.")
+} else {
+  print("All geometries valid!")
 }
+
+
+
+```
+KEEP IN SEPEARTE CODE CHUNKS?????
+```{r}
+#......Crop 'Blackout' mask to Houston area ......
+
+# Create bounding box for Houston area 
+bbox_houston <- c(xmin = -96.5, xmax = -94.5, ymin = 29, ymax = 30.5)
+
+# Crop your sf object to that bbox
+blackout <- st_crop(blackout, bbox_houston)
+
+# Update CRS
+
+#blackout <- st_bbox(c(xmin = -96.5, xmax = -94.5, ymax = 30.5, ymin = 29),crs = st_crs(blackout))
+
+print(class(blackout))
+
 ```
 
+## Map 3: Changing in night light intensity
+```{r}
 
-### Change in night light intensity
+```
+
 
 ## Highways
 ```{r}
@@ -274,6 +295,8 @@ if(ext(nl_07) == ext(nl_16)){
 # data wranglign to summarize median income by census tract 
 
 # to find those that are not expe blackouts, go back to joining them 
+
+# make a column called 'experienced blackout' vs 'did not experience blackout'
 ```
 
 
