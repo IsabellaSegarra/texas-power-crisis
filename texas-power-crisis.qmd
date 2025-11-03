@@ -78,20 +78,20 @@ houses <- read_sf(here("data", "gis_osm_buildings_a_free_1.gpkg"), query = "SELE
 ## Socieconomic data import
 This data is from  U.S. Census Bureau’s American Community Survey (CITE) 2019 census. This Geodatabase (gdb) data contains data for Texas with  5,365 observations and 16 variables.  
 ```{r}
-# Import socioeconomic data 
-
+# Import socioeconomic geometry layer
 socioeco_geom <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), layer = "ACS_2019_5YR_TRACT_48_TEXAS")
 
+# Import socieconomic income layer 
 socioeco_income <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), layer = "X19_INCOME")
 
-# View layers with 'st_layers'
-st_layers(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"))
+# View layers with 'st_layers' (commented out for now)
+#st_layers(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"))
 
 ```
 
 ## Data wranlging
 
-### CRS Matching
+### CRS Matching (Might need to change up in workflow)
 In order to work with all datasets, I need to confirm that the Coordinate Refrence Systems (CRS) match. 
 
 ```{r}
@@ -113,7 +113,7 @@ for (i in seq_along(datasets)) {
 # MAKE IT PRINT WITH THE NAMES OF THE DATA 
 
 ```
-Since the CRS of 'socioeco_geom' is inconsisent with the CRSs of the rest of the data, I will transform this data to match the rest of the data. 
+Since the CRS of 'socioeco_geom' is inconsistent with the CRSs of the rest of the data, I will transform this data to match the rest of the data. 
 
 ```{r}
 # ......Transform CRS of 'socioeco' ......
@@ -167,39 +167,75 @@ rm(list = c("nl_h08v05_16", "nl_h08v06_16"))
 
 
 ## Maps 1 and 2: Night Lights 
-In this section, I mapped the night lights for February 2nd and 16th. 
+In this section, I mapped the night lights for February 7th and 16th. 
 ```{r}
 # Create bounding box for Houston area 
-bbox_houston <- c(xmin = -96.5, xmax = -94.5, ymin = 29, ymax = 30.5)
+bbox_houston <- st_bbox(c(xmin = -96.5, xmax = -94.5, ymax = 30.5, ymin = 29),crs = st_crs(nl_07)) # Match CRS to night light data
+
+# Crop Feb 7th night light data
+nl_07_crop<- st_crop(nl_07, bbox_houston)
+
+# Crop Feb 16th night light data
+nl_16_crop<- st_crop(nl_16, bbox_houston)
+
+# Verify that 'nl_07' and 'nl_16' were cropped to Houston area
+
+if(ncell(nl_07) == nrow(nl_07_crop)) {
+  warning("data did not crop!")
+} else {
+  print("data cropped!")
+}
+
+if(ncell(nl_16) == nrow(nl_16_crop)) {
+  warning("data did not crop!")
+} else {
+  print("data cropped!")
+}
+
+# Clear up environment for efficiency (DO LATER!)
+#rm(list = c(""))
+
+```
+
+```{r}
+#......Mapping 2021-02-07......
+
+plot(nl_07_crop)
+
+
+tm_shape(nl_07_crop) + # Plot the cropped data 
+  tm_raster(
+    palette = gray.colors(10),   # add gray scale 
+    style = "quantile",         # MESS around with styling
+   col.legend = tm_legend(title = "Light Intensity (units)")) + 
+  tm_title("Houston, Texas Night Lights 02-07-2021") +
+  tm_title("SUBTITLE") +
+  tm_layout(bg.color = "white")
+
+  
+
 ```
 
 
 ```{r}
-# Mapping 2021-02-07
+#......Mapping 2021-02-07......
+plot(nl_16)
 
-tm_shape(nl_07) +
-  tm_raster() 
+tm_shape(nl_16_crop) + # Plot the cropped data 
+  tm_raster(
+    palette = gray.colors(10),   # add gray scale 
+    style = "quantile",         # MESS around with styling
+   col.legend = tm_legend(title = "Light Intensity (units)")) + 
+  tm_title("Houston, Texas Night Lights 02-16-2021") +
+  tm_title("SUBTITLE") +
+  tm_layout(bg.color = "white")
+   
 
 ```
 
 
 ```{r}
-
-
-# this will produce a conditional and any object that is an NA is more than 200 
-# True - more than 200, False - less than 200 
-
-# NA by indexing 
-
-# difference mask 
-
-# st_as_sf()
-
-# st_make_valid (check with sstisvalid first)
-
-# vector difference mask 
-
-# crop with st_bbox (convert w/ st_as_sf) or with st_points (more tedious) 
+#
 
 # use st_crop or st_interscts to join
 
@@ -210,14 +246,17 @@ Find blackout regions by defining that blackout regions more than 200 nW cm-2sr-
 ```{r}
 #......Vector difference mask ......
 
-# Create conditional where Trues are regions that experienced a blackout and 
+# Create conditional where TRUEs are regions that experienced a blackout 
 blackout <- (nl_16 - nl_07) > 200
 
-# Reassign FALSE as NA
+# Reassign FALSEs as NA
 blackout[blackout == FALSE] <- NA
 
 # Turn into vector object (DOUBLE CJHECK IF U NEED TO DO THIS) 
 blackout <- st_as_sf(blackout)
+
+# View your new vector dataframe 
+#head(blackout)
 
 # Check for invalid geometries
 if (any(!st_is_valid(blackout))) {
@@ -229,40 +268,81 @@ if (any(!st_is_valid(blackout))) {
 }
 
 
-
 ```
-KEEP IN SEPEARTE CODE CHUNKS?????
+
 ```{r}
 #......Crop 'Blackout' mask to Houston area ......
 
-# Create bounding box for Houston area 
-bbox_houston <- c(xmin = -96.5, xmax = -94.5, ymin = 29, ymax = 30.5)
-
-# Crop your sf object to that bbox
+# Crop your sf object to Houston bbox made earlier 
 blackout <- st_crop(blackout, bbox_houston)
 
-# Update CRS
+# Re-project to EPSG:3083 (NAD83 / Texas Centric Albers Equal Area)
+blackout <- st_transform(blackout, crs = "EPSG:3083")
 
-#blackout <- st_bbox(c(xmin = -96.5, xmax = -94.5, ymax = 30.5, ymin = 29),crs = st_crs(blackout))
-
-print(class(blackout))
-
+# Test that CRS re-projected
+test_that("Texas CRS", {
+  expect_equal(st_crs(blackout)$epsg, 3083)
+}) 
 ```
 
 ## Map 3: Changing in night light intensity
 ```{r}
+plot(blackout)
+
+tm_shape(blackout) +
+  tm_polygons() +
+  tm_title("Blackout Regions February 2021 Texas Power Crisis", fontface = "bold")+
+  tm_title("source:NASA VIIRS", size = 0.5) +
+  tm_layout(bg.color = "white") +
+  tm_basemap("CartoDB.PositronNoLabels") +
+  tm_compass() +
+  tm_scalebar()
+
+
+
 
 ```
 
-
 ## Highways
+In this section, I will exclude highways from the blackout mask.
 ```{r}
-# identity areas within 200 m of all hgiways (use st_buffer)
+#......Create buffer of 200 meters ......
 
+# The CRS of 'roads' needs to be transformed to the Texas CRS
+roads <- st_transform(roads, crs = "EPSG:3083")
+
+# Identify areas within 200 m of all highways
+buffer <- st_buffer(roads, dist = 200) 
+
+# Check for invalid geometries (MAKE INTO PRINT STATEMENTS)
+which(!st_is_valid(buffer))
+
+# Check that buffer is a polygon (MAKE INTO PRINT STATEMENTS)
+st_geometry_type(buffer)
+
+tm_shape(buffer) +
+  tm_polygons()
+
+```
+
+```{r}
+#......Combine original roads and buffer......
 # use st_union to combine original roads and buffer 
+
+#roads_buffer <- st_union(roads, buffer)
+
+tm_shape(roads_buffer) +
+  tm_polygons()
+
+```
+
+```{r}
+#......Areas further than 200 m......
 
 # find areas that experienced blackouts that are further than 200 m  
   # can use sst_disjoin and st_difference 
+
+st_difference()
 
 # use the output of st_union 
 
