@@ -73,6 +73,8 @@ This vector data is also from OSM, processed with the helpf of a third party(CIT
 # Import house data with SQL query to filter for selected building types (use st_read)
 houses <- read_sf(here("data", "gis_osm_buildings_a_free_1.gpkg"), query = "SELECT * FROM gis_osm_buildings_a_free_1 WHERE (type IS NULL AND name IS NULL) OR type in ('residential', 'apartments', 'house', 'static_caravan', 'detached')")
 
+st_layers(here("data", "gis_osm_buildings_a_free_1.gpkg"))
+
 ```
 
 ## Socieconomic data import
@@ -202,7 +204,7 @@ if(ncell(nl_16) == nrow(nl_16_crop)) {
 
 plot(nl_07_crop)
 
-
+# UPDATE BREAKS
 tm_shape(nl_07_crop) + # Plot the cropped data 
   tm_raster(
     palette = gray.colors(10),   # add gray scale 
@@ -212,7 +214,9 @@ tm_shape(nl_07_crop) + # Plot the cropped data
   tm_title("SUBTITLE") +
   tm_layout(bg.color = "white")
 
-  
+
+tm_shape(nl_07_crop) +
+  tm_raster(breaks = c(2000, 4000, 6000, 8000)) 
 
 ```
 
@@ -300,7 +304,6 @@ tm_shape(blackout) +
 
 
 
-
 ```
 
 ## Highways
@@ -311,8 +314,11 @@ In this section, I will exclude highways from the blackout mask.
 # The CRS of 'roads' needs to be transformed to the Texas CRS
 roads <- st_transform(roads, crs = "EPSG:3083")
 
+# MAKE PRINT STATMENT CONNFIRIMING THE UNITS 
+st_crs(roads)$units
+
 # Identify areas within 200 m of all highways
-buffer <- st_buffer(roads, dist = 200) 
+buffer <- st_buffer(roads, dist = 200)
 
 # Check for invalid geometries (MAKE INTO PRINT STATEMENTS)
 which(!st_is_valid(buffer))
@@ -320,16 +326,25 @@ which(!st_is_valid(buffer))
 # Check that buffer is a polygon (MAKE INTO PRINT STATEMENTS)
 st_geometry_type(buffer)
 
-tm_shape(buffer) +
-  tm_polygons()
+# ANother way
+
+highway <- st_buffer(roads, dist = 200) %>% 
+  st_union()
 
 ```
+
+```{r}
+# Plot 
+tm_shape(highway) +
+  tm_polygons()
+```
+
 
 ```{r}
 #......Combine original roads and buffer......
 # use st_union to combine original roads and buffer 
 
-#roads_buffer <- st_union(roads, buffer)
+#roads_buffer <- st_union(roads, buffer) 
 
 tm_shape(roads_buffer) +
   tm_polygons()
@@ -340,9 +355,10 @@ tm_shape(roads_buffer) +
 #......Areas further than 200 m......
 
 # find areas that experienced blackouts that are further than 200 m  
-  # can use sst_disjoin and st_difference 
+  # can use st_disjoin and st_difference 
 
-st_difference()
+
+st_difference(blackout, highways) 
 
 # use the output of st_union 
 
@@ -356,6 +372,7 @@ st_difference()
     # can use st_intersection, st_within, st_contains (write more about your justificaiton for using some, ex:    st_intersection will consider homes on the edge, within and contains doe snot )
 
 # get homes that experienced blackount 
+
 
 
 ```
