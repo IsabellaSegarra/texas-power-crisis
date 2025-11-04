@@ -73,8 +73,6 @@ This vector data is also from OSM, processed with the helpf of a third party(CIT
 # Import house data with SQL query to filter for selected building types (use st_read)
 houses <- read_sf(here("data", "gis_osm_buildings_a_free_1.gpkg"), query = "SELECT * FROM gis_osm_buildings_a_free_1 WHERE (type IS NULL AND name IS NULL) OR type in ('residential', 'apartments', 'house', 'static_caravan', 'detached')")
 
-st_layers(here("data", "gis_osm_buildings_a_free_1.gpkg"))
-
 ```
 
 ## Socieconomic data import
@@ -202,41 +200,31 @@ if(ncell(nl_16) == nrow(nl_16_crop)) {
 ```{r}
 #......Mapping 2021-02-07......
 
-plot(nl_07_crop)
 
 # UPDATE BREAKS
-tm_shape(nl_07_crop) + # Plot the cropped data 
-  tm_raster(
-    palette = gray.colors(10),   # add gray scale 
-    style = "quantile",         # MESS around with styling
-   col.legend = tm_legend(title = "Light Intensity (units)")) + 
-  tm_title("Houston, Texas Night Lights 02-07-2021") +
-  tm_title("SUBTITLE") +
-  tm_layout(bg.color = "white")
 
+nl_07_map <- tm_shape(nl_07_crop) +
+  tm_raster(palette = gray.colors(10), 
+            style = "cont",
+            title = "Light Intensity (units)") + 
+  tm_title("Houston, Texas Night Lights 02-07-2021", fontface = "bold") +
+  tm_title("SUBTITLE", size = 0.8) +
+  tm_layout(bg.color = "white") 
 
-tm_shape(nl_07_crop) +
-  tm_raster(breaks = c(2000, 4000, 6000, 8000)) 
+#......Mapping 2021-02-16......
 
-```
+nl_16_map <- tm_shape(nl_07_crop) +
+  tm_raster(palette = gray.colors(10), 
+            style = "cont",
+            title = "Light Intensity (units)") + 
+  tm_title("Houston, Texas Night Lights 02-16-2021", fontface = "bold") +
+  tm_title("SUBTITLE", size = 0.8) +
+  tm_layout(bg.color = "white") 
 
-
-```{r}
-#......Mapping 2021-02-07......
-plot(nl_16)
-
-tm_shape(nl_16_crop) + # Plot the cropped data 
-  tm_raster(
-    palette = gray.colors(10),   # add gray scale 
-    style = "quantile",         # MESS around with styling
-   col.legend = tm_legend(title = "Light Intensity (units)")) + 
-  tm_title("Houston, Texas Night Lights 02-16-2021") +
-  tm_title("SUBTITLE") +
-  tm_layout(bg.color = "white")
-   
+# Arrange both maps
+tmap_arrange(nl_07_map, nl_16_map, nrow = 1) 
 
 ```
-
 
 ```{r}
 #
@@ -256,7 +244,7 @@ blackout <- (nl_16 - nl_07) > 200
 # Reassign FALSEs as NA
 blackout[blackout == FALSE] <- NA
 
-# Turn into vector object (DOUBLE CJHECK IF U NEED TO DO THIS) 
+# Turn into vector object 
 blackout <- st_as_sf(blackout)
 
 # View your new vector dataframe 
@@ -277,7 +265,7 @@ if (any(!st_is_valid(blackout))) {
 ```{r}
 #......Crop 'Blackout' mask to Houston area ......
 
-# Crop your sf object to Houston bbox made earlier 
+# Crop your sf object to Houston bbox made previously
 blackout <- st_crop(blackout, bbox_houston)
 
 # Re-project to EPSG:3083 (NAD83 / Texas Centric Albers Equal Area)
@@ -291,7 +279,6 @@ test_that("Texas CRS", {
 
 ## Map 3: Changing in night light intensity
 ```{r}
-plot(blackout)
 
 tm_shape(blackout) +
   tm_polygons() +
@@ -314,67 +301,53 @@ In this section, I will exclude highways from the blackout mask.
 # The CRS of 'roads' needs to be transformed to the Texas CRS
 roads <- st_transform(roads, crs = "EPSG:3083")
 
-# MAKE PRINT STATMENT CONNFIRIMING THE UNITS 
+# MAKE WARNING STATMENT 
 st_crs(roads)$units
 
 # Identify areas within 200 m of all highways
-buffer <- st_buffer(roads, dist = 200)
-
-# Check for invalid geometries (MAKE INTO PRINT STATEMENTS)
-which(!st_is_valid(buffer))
-
-# Check that buffer is a polygon (MAKE INTO PRINT STATEMENTS)
-st_geometry_type(buffer)
-
-# ANother way
-
 highway <- st_buffer(roads, dist = 200) %>% 
   st_union()
 
+# Check for invalid geometries (MAKE INTO PRINT STATEMENTS)
+which(!st_is_valid(highway))
+
+# Check that buffer is a polygon (MAKE INTO PRINT STATEMENTS)
+st_geometry_type(highway)
+
+
 ```
 
+### Map 4: Highways 
 ```{r}
 # Plot 
 tm_shape(highway) +
-  tm_polygons()
-```
-
-
-```{r}
-#......Combine original roads and buffer......
-# use st_union to combine original roads and buffer 
-
-#roads_buffer <- st_union(roads, buffer) 
-
-tm_shape(roads_buffer) +
-  tm_polygons()
-
+  tm_polygons(col = ) +
+  tm_basemap("CartoDB.PositronNoLabels")
 ```
 
 ```{r}
 #......Areas further than 200 m......
 
-# find areas that experienced blackouts that are further than 200 m  
-  # can use st_disjoin and st_difference 
-
-
-st_difference(blackout, highways) 
-
-# use the output of st_union 
+blackout_highways <- st_difference(blackout, highway) 
 
 ```
 
 
 ## Buildings
 ```{r}
+#......Find buildings affected by blackout ......
 # overlap with areas that are non-highway and experience blackout
 
     # can use st_intersection, st_within, st_contains (write more about your justificaiton for using some, ex:    st_intersection will consider homes on the edge, within and contains doe snot )
 
-# get homes that experienced blackount 
+# get homes that experienced blackout 
 
+# The CRS of 'roads' needs to be transformed to the Texas CRS
+houses <- st_transform(houses, crs = "EPSG:3083")
 
+buildings_blackout <- st_within(blackout_highways, houses) 
 
+print(class(buildings_blackout))
 ```
 
 ## Combine layers of socieco
@@ -388,6 +361,8 @@ st_difference(blackout, highways)
 
 # left join them on GEO ID (make sure same CRS) 
   # use st_within or st_interesects 
+
+left_join(socioeco_income, socioeco_geom, by = "GEOID")
 
 # data wranglign to summarize median income by census tract 
 
