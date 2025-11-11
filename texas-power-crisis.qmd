@@ -2,7 +2,7 @@
 title: "Investigating the 2021 Texas Power Crisis"
 subtitle: "EDS-223 Assignment 3"
 author: "Isabella Segarra"
-date: 10-19-2025
+date: 11-10-2025
 format: 
   pdf: default 
   html: default
@@ -14,7 +14,7 @@ execute:
 
 # Texas Power Crisis
 
-![](/Users/isabellasegarra/Documents/MEDS/EDS-223/README-screenshot.png)
+![README](figs/README-screenshot.png)
 
 ### Objective
 In this project, I investigated the February 2021 Texas power crisis, which was triggered by three severe winter storms that caused widespread blackouts across the region. To illustrate the impact of the storms, I mapped Houston’s night lights before and after the crisis and identified areas that experienced a blackout. To explore the differential effects of the power outages from a socioeconomic perspective, I compared the median household incomes of census tracts that experienced a blackout with those that did not. 
