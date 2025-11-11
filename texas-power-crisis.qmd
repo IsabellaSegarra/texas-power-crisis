@@ -12,7 +12,7 @@ execute:
   message: false
 ---
 
-# TITLE 
+# Texas Power Crisis
 
 [ADD README SCREENSHOT]
 ![](filepath)
@@ -35,6 +35,7 @@ library(tidyverse) # For data cleaning
 library(dplyr) # For filtering data 
 library(paletteer) # For pretty colors 
 library(testthat) # For efficient workflows 
+library(kableExtra) # For pretty tables 
 
 ```
 
@@ -44,6 +45,8 @@ The data I am using in this project includes data from NASA's Worldview for nigh
 ### Night lights data import
 This raster data is from NASA's Worldview tool, distributed through NASA's Level-1 and Atmospheric Archive & Distribution System Distributed Active Archive Center (LAADS DAAC). It is a `.tif` file that contains 10x10 degree tiles. I will be importing four data files from the `VNP46A1` folder for night light data from the days surrounding the storm as stars. 
 ```{r}
+#| output: false 
+#| message: false
 
 # Import tile h08v05 from 2021-02-07
 nl_h08v05_07 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021038.h08v05.001.2021039064328.tif"))
@@ -60,24 +63,35 @@ nl_h08v06_16 <- read_stars(here("data", "VNP46A1","VNP46A1.A2021047.h08v06.001.2
 ```
 
 ### Roads data import
-This vector data is from OSM, processed with the help of a third party site (CITE) to produce a shapefile of all Texas highways. This data contains 6,085 observations with 11 variables. 
+This vector data is from OSM, processed with the help of a third party site to produce a shapefile of all Texas highways. This data contains 6,085 observations with 11 variables. 
 ```{r}
+#| output: false 
+#| message: false
+
 # Import roads data with SQL query to filter for only highways (use st_read)
 roads <- read_sf(here("data", "gis_osm_roads_free_1.gpkg"), query = "SELECT * FROM gis_osm_roads_free_1 WHERE fclass='motorway'")
 
 ```
 
 ### House data import
-This vector data is also from OSM, processed with the help of a third party (CITE) to produce a shapefile of houses in the Houston metropolitan area. This data contains 475941 observations with 6 variables. 
+This vector data is also from OSM, processed with the help of a third party to produce a shapefile of houses in the Houston metropolitan area. This data contains 475941 observations with 6 variables. 
 ```{r}
+#| output: false 
+#| message: false
+
+
 # Import house data with SQL query to filter for selected building types (use st_read)
 houses <- read_sf(here("data", "gis_osm_buildings_a_free_1.gpkg"), query = "SELECT * FROM gis_osm_buildings_a_free_1 WHERE (type IS NULL AND name IS NULL) OR type in ('residential', 'apartments', 'house', 'static_caravan', 'detached')")
 
 ```
 
 ## Socieconomic data import
-This data is from  U.S. Census Bureau’s American Community Survey (CITE) 2019 census. This Geodatabase (gdb) contains data for Texas. I will be importing two layers from the gdb. 
+This data is from  U.S. Census Bureau’s American Community Survey 2019 census. This Geodatabase (gdb) contains data for Texas. I will be importing two layers from the gdb. 
 ```{r}
+#| output: false 
+#| message: false
+
+
 # Import socioeconomic geometry layer
 socioeco_geom <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), layer = "ACS_2019_5YR_TRACT_48_TEXAS")
 
@@ -92,9 +106,10 @@ socioeco_income <- read_sf(here("data", "ACS_2019_5YR_TRACT_48_TEXAS.gdb"), laye
 ## Data Exploration
 
 ### CRS Matching 
-Before diving into the data, I want to see what CRSs the data is currently at. 
-
+Before diving into the data, I want to see what CRSs the data are currently set to. 
 ```{r}
+#| output: false 
+
 # ......Check CRS of individual datasets......
 
 # Create list of the datasets that have geometries
@@ -112,6 +127,8 @@ for (i in seq_along(datasets)) {
 ### Check for Invalid geometries
 Check for invalid geometries in our three datasets (roads, houses, socieoeco_geom) that contain a geometry type (e.g, multiploygon). 
 ```{r}
+#| output: false 
+
 #......Checking for invalid geometries......
 
 # Create a dataset with only the data that contains geometries
@@ -120,7 +137,7 @@ datasets_geom = list(roads, houses, socioeco_geom)
 # Check if there are invalid geometries 
 for (i in seq_along(datasets_geom)) {
   which(!st_is_valid(datasets_geom[[i]]))
-  print("There are NO invalid geometries")
+  message("There are NO invalid geometries")
 }
 ```
 
@@ -129,6 +146,8 @@ for (i in seq_along(datasets_geom)) {
 ### Merge tiles 
 In this section, I merged the tiles for February 7th, 2021 and February 16, 2021. 
 ```{r}
+#| output: false 
+
 #......Night light change ......
 
 # Merge night light for 2021-02-07
@@ -150,6 +169,8 @@ rm(list = c("nl_h08v05_16", "nl_h08v06_16"))
 ## Map: Night Lights 
 In this section, I mapped the night lights for February 7th and 16th. In order to do so, I created a bounding box for the Houston area to crop the night light data with.  
 ```{r}
+#| output: false 
+
 # Create bounding box for Houston area 
 bbox_houston <- st_bbox(c(xmin = -96.5, xmax = -94.5, ymax = 30.5, ymin = 29),crs = st_crs(nl_07)) # Match CRS to night light data
 
@@ -164,18 +185,15 @@ nl_16_crop<- st_crop(nl_16, bbox_houston)
 if(ncell(nl_07) == nrow(nl_07_crop)) {
   warning("data did not crop!")
 } else {
-  print("data cropped!")
+  message("data cropped!")
 }
 
 if(ncell(nl_16) == nrow(nl_16_crop)) {
   warning("data did not crop!")
 } else {
-  print("data cropped!")
+  message("data cropped!")
 }
 
-# Clear up environment for efficiency 
-rm(list = c("nl_07"))
-rm(list = c("nl_16"))
 
 ```
 
@@ -183,14 +201,16 @@ rm(list = c("nl_16"))
 #......Mapping 2021-02-07......
 
 nl_07_map <- tm_shape(nl_07_crop) + # Map cropped data
-  tm_raster(palette = "Purples", 
+  tm_raster(palette = "magma", 
             breaks = c(0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000), # custom breaks
                        title = "Light Intensity (nW/cm^2/sr)") +
-  tm_title("Houston, Texas Night Lights 02-07-2021", fontface = "bold") +
-  tm_title("Before storm (02-16-2021)", size = 0.8) +
-  tm_layout(bg.color = "white", legend.show = TRUE) +
-   tm_compass(size = 0.8) +
-  tm_scalebar(size = 0.5)
+  tm_title("Houston, Texas Night Lights", fontface = "bold") +
+  tm_title("Before storm: 02-07-2021", size = 0.8) +
+  tm_layout(bg.color = "black", legend.show = TRUE) +
+    tm_compass(size = 0.8, text.color = "white", 
+             color.light = "white") +
+  tm_scalebar(size = 0.5, text.color = "white", 
+              color.light = "white") 
 
 # View map
 nl_07_map
@@ -200,14 +220,16 @@ nl_07_map
 #......Mapping 2021-02-16......
 
 nl_16_map <- tm_shape(nl_16_crop) + # map cropped data
-  tm_raster(palette = "Purples",
+  tm_raster(palette = "magma",
             breaks = c(0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000), # custom breaks 
             title = "Light Intensity (nW/cm^2/sr)") + 
   tm_title("Houston, Texas Night Lights", fontface = "bold") +
   tm_title("After storm: 02-16-2021 ", size = 0.8) +
-  tm_layout(bg.color = "white", legend.show = TRUE) +
-  tm_compass(size = 0.8) +
-  tm_scalebar(size = 0.5) 
+  tm_layout(bg.color = "black", legend.show = TRUE) +
+  tm_compass(size = 0.8, text.color = "white", 
+             color.light = "white") +
+  tm_scalebar(size = 0.5, text.color = "white", 
+              color.light = "white") 
 
 # View map
 nl_16_map
@@ -217,6 +239,9 @@ nl_16_map
 ### Find blackouts 
 Find blackout regions by defining the blackout regions where more than 200 nW cm-2sr-1 experienced a blackout and those less than 200 nW cm-2sr-1 did not experience a blackout. 
 ```{r}
+#| output: false 
+
+
 #......Vector difference mask ......
 
 # Create conditional where TRUEs are regions that experienced a blackout 
@@ -253,34 +278,17 @@ blackout <- st_crop(blackout, bbox_houston)
 blackout <- st_transform(blackout, crs = "EPSG:3083")
 
 # Test that CRS re-projected
-test_that("Test 1", {
+test_that("Test 1: CRS", {
   expect_equal(st_crs(blackout)$epsg, 3083)
 }) 
-```
-
-## Map: Changing in night light intensity
-```{r}
-#......Mapping Blackout regions......
-
-blackout_map <- tm_shape(blackout) +
-  tm_polygons(col = "#2f0873") +
-  tm_title("Blackout Regions February 2021 Texas Power Crisis", fontface = "bold")+
-  tm_title("source: NASA VIIRS", size = 0.5) +
-  tm_layout(bg.color = "white") +
-  tm_basemap("CartoDB.PositronNoLabels") +
-  tm_compass(size = 0.8) +
-  tm_scalebar(size = 0.5)
-
-# View map
-blackout_map
-
-
 ```
 
 ## Highways
 In this section, I will exclude highways from the blackout mask because they may have experienced night light changes not associated with the severe storms. 
 
 ```{r}
+#| output: false 
+
 #......Create buffer of 200 meters ......
 
 # The CRS of 'roads' needs to be transformed to the Texas CRS
@@ -295,12 +303,13 @@ if (units_roads != "m") {
   message("Units are in meters!")
 }
 
+
 # Identify areas within 200 m of all highways
 highway <- st_buffer(roads, dist = 200) %>% 
   st_union()
 
 # Check for invalid geometries 
-which(!st_is_valid(highway)
+which(!st_is_valid(highway))
 
 # Check that buffer is a polygon 
 st_geometry_type(highway)
@@ -310,7 +319,6 @@ st_geometry_type(highway)
 
 ```{r}
 #......Areas further than 200 m......
-
 blackout_highways <- st_difference(blackout, highway) 
 
 ```
@@ -319,6 +327,8 @@ blackout_highways <- st_difference(blackout, highway)
 ## Buildings
 In this section I found the buildings in Houston, TX affected by the blackout. I used the function 'st_join' by intersection to find the houses all within the 'blackout_highways' multipolygon data frame that experienced a blackout.
 ```{r}
+#| output: false
+
 #......Find buildings affected by blackout ......
 
 # The CRS of 'roads' needs to be transformed to the Texas CRS
@@ -327,19 +337,64 @@ houses <- st_transform(houses, crs = "EPSG:3083")
 # Join blackout highways and houses 
 buildings_blackout <- st_join(houses, blackout_highways, join = st_intersects, left = TRUE)
 
+# Update column name to blackout
+buildings_blackout<- buildings_blackout %>% rename(blackout = VNP46A1.A2021047.h08v05.001.2021048091106.tif)
+
 # View the class of the new data frame 
 print(class(buildings_blackout))
 
-## FIND estimate of houses that experienced blackout
 
 ```
+For the estimate of number of homes that experienced blackouts, I filtered the buildings that experienced a blackout to just those of type house, apartments, and residential. 
+```{r}
+# ......Estimate number of houses that experienced blackout ......
+
+# Filter buildings_blackout for only select buildings
+residential_blackout <- buildings_blackout %>% 
+  filter(type %in% c("house", "apartments", "residential"))
+
+# Estimate the sum of blackouts per building type 
+residential_estimate <- residential_blackout %>% 
+  group_by(type) %>% 
+  summarize(blackout_buildings = sum(blackout, na.rm = TRUE))
+
+```
+
+```{r}
+#| echo: false
+
+# Define columns
+Type <- c("apartments", "house", "residential")
+Number <- c(609, 6275, 278)
+
+# Combine into a table
+blackout_table <- data.frame(
+  Type,
+  Number
+)
+
+# Put together with ‘kableExtra’
+blackout_table %>%
+  kable(col.names = c("Type of building", "Number of Blackouts"), caption = "Table 1. Estimate of houses that experinced blackouts") %>%
+  kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+
+
+```{r}
+#......Find buildings not affected by blackout.....
+
+buildings_no_blackout <- buildings_blackout %>% #running slow, dropping geom
+  filter(is.na(blackout))
+
+```
+
 
 ### Map: Homes in Houston that lost power 
 ```{r}
 tm_shape(buildings_blackout) +
   tm_polygons(col = "#2f0873") +
-  tm_title("Blackout Regions February 2021 Texas Power Crisis", fontface = "bold")+
-  tm_title("source: NASA VIIRS", size = 0.5) +
+  tm_title("Houses in Houston Affected by the 2021 Power Crisis", fontface = "bold")+
   tm_layout(bg.color = "white") +
   tm_basemap("CartoDB.PositronNoLabels") +
   tm_compass(size = 0.8) +
@@ -347,16 +402,18 @@ tm_shape(buildings_blackout) +
 
 ```
 
-
 ## Census Tracts 
 In this section I investigated which census tracts experienced blackouts or no blackouts. 
 
 Some important information for this analysis: 
 - socioeco_geom = census tracts geometries
 - socioeco_income = median income  
+- B19013m1 = Median household income in the past 12 months
 
-Some data wrangling before...
 ```{r}
+#| output: false 
+
+#......Data wrangling..... 
 
 # rename GEOID column in socieco_geom 
 socioeco_geom <- socioeco_geom %>% 
@@ -381,49 +438,71 @@ if(st_crs(socieoco)$epsg != 3083) {
   socieoco <- st_transform(socieoco, crs = "EPSG:3083")
 }
 
-# Update geom name and select for geometry on in buildings_blackout
-buildings_blackout <- buildings_blackout[, "geom"]
-
 
 ```
 
-
-Finding what census tracts that did not experience a blackout.
 ```{r}
 #.....Census tracts that experienced blackout ......
 
-soc_blackout <- st_join(socieoco,buildings_blackout, left = TRUE) 
+soc_blackout <- st_join(socieoco, buildings_blackout, left = TRUE) 
 
-# make column with median incomes called (income_blackout)
+# Rename column with median incomes to 'income_blackout'
+soc_blackout <- soc_blackout %>% rename(income_blackout = B19013m1)
 
-soc_no_blackout <- st_disjoint(socieoco[socieoco,buildings_blackout], left = TRUE) 
+#.....Census tracts that did NOT experience blackout ......
 
-# make column with median incomes called (income_no_blackout)
+soc_no_blackout <- st_join(socieoco, buildings_no_blackout, left = TRUE)
 
-# rejoin data set 
-
-# create new variable that tells where they experienced blackout or not, group by this variable 
-
-soc_aft_houses %>% 
-  mutate()
+# Rename column with median incomes to 'income_no_blackout'
+soc_no_blackout <- soc_no_blackout %>% rename(income_no_blackout = B19013m1)
 
 
-# data wrangling to summarize median income by census tract 
-# In META data - B19051e1
-soc_aft_houses %>% 
-  group_by(B19013m1) %>% 
-  aggregate(B19013m1))
+# Rejoin data set. Error: vector memory limit reached. 
+soc_join <- soc_blackout %>% st_drop_geometry() %>%
+  left_join(soc_no_blackout %>% st_drop_geometry(), by = "GEOID")
 
 
-# the NAs are those that did not experience blackout 
+# make box plot of median income with 'income_blackout' and 'income_no_blackout' data
 
-# to find those that are not expe blackouts, go back to joining them 
-
-# make a column called 'experienced blackout' vs 'did not experience blackout (NAs)'
-
-# make box plot of median income
-
-# plot map just cause 
 ```
+
+```{r, fig.cap= "Distribution of median incomes for homes affected and not affected by blackouts."}
+# plot of median income blackout regions
+#library(patchwork)
+
+blackout_soc <- ggplot(soc_blackout, aes(x = income_blackout)) +
+  geom_histogram(fill = "#b4c29d") +
+  theme_bw() +
+  labs(x = "Median Income", 
+       title = "Homes Affected by Blackouts")
+
+no_blackout_soc <- ggplot(soc_no_blackout, aes(x = income_no_blackout)) +
+  geom_histogram(fill = "#f58056") + 
+  theme_bw() +
+  labs(x = "Median Income", 
+       title = "Homes Not Affected by Blackouts")
+
+blackout_soc + no_blackout_soc
+
+```
+
+## Map of Census Tracts that lost power
+```{r}
+which(!st_is_valid(soc_blackout))
+
+# dTolerance controls simplification; increase for more aggressive simplification
+soc_blackout_simple <- st_simplify(soc_blackout, dTolerance = 100)  
+
+soc_blackout_simple <- soc_blackout_simple %>% 
+  select(GEOID, income_blackout)
+
+      
+tm_shape(soc_blackout) %>% 
+  tm_polygons() 
+
+```
+
+## Discussion
+Based on the results of this investigation, it is clear that the 2021 Texas power crisis had widespread impacts on the state of Texas and even more widespread impacts in the city of Houston. From viewing the changes in night lights, I saw that large regions of Houston experienced large blackouts (>10km). When looking at the Census tract data, there were more houses with median incomes less than 20,000/year that experienced blackouts compared those that did experience a blackout. As with many dense, urban regions, it is important to look at the data with the knowledge that much variability in the data will not be shown. Due to this fact, it is safe to assume that much of the effects on Texan residents is underrepresented, especially for dense cities such as Houston. 
 
 
