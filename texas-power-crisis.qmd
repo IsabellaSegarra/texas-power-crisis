@@ -456,10 +456,11 @@ soc_no_blackout <- st_join(socieoco, buildings_no_blackout, left = TRUE)
 # Rename column with median incomes to 'income_no_blackout'
 soc_no_blackout <- soc_no_blackout %>% rename(income_no_blackout = B19013m1)
 
+#..... Rejoin datasets .....
 
 # Rejoin data set. Error: vector memory limit reached. 
-soc_join <- soc_blackout %>% st_drop_geometry() %>%
-  left_join(soc_no_blackout %>% st_drop_geometry(), by = "GEOID")
+#soc_join <- soc_blackout %>% st_drop_geometry() %>%
+  #left_join(soc_no_blackout %>% st_drop_geometry(), by = "GEOID")
 
 
 # make box plot of median income with 'income_blackout' and 'income_no_blackout' data
@@ -485,24 +486,28 @@ no_blackout_soc <- ggplot(soc_no_blackout, aes(x = income_no_blackout)) +
 blackout_soc + no_blackout_soc
 
 ```
-
 ## Map of Census Tracts that lost power
+Below are attemps at mapping the census tracts that lost power. Tmap() is struggling to map this large of a dataset. I plan to continue to troubleshoot this error. 
 ```{r}
-which(!st_is_valid(soc_blackout))
+# Attempts to fix issue 
 
-# dTolerance controls simplification; increase for more aggressive simplification
+class(soc_blackout)
+nrow(soc_blackout)
+st_geometry(soc_blackout)
+
+# Simplify the data
 soc_blackout_simple <- st_simplify(soc_blackout, dTolerance = 100)  
-
+# Filter for only relevant columns (fail to run)
 soc_blackout_simple <- soc_blackout_simple %>% 
   select(GEOID, income_blackout)
 
       
-tm_shape(soc_blackout) %>% 
-  tm_polygons() 
+#tm_shape(soc_blackout) %>% 
+  #tm_polygons() 
 
 ```
 
 ## Discussion
-Based on the results of this investigation, it is clear that the 2021 Texas power crisis had widespread impacts on the state of Texas and even more widespread impacts in the city of Houston. From viewing the changes in night lights, I saw that large regions of Houston experienced large blackouts (>10km). When looking at the Census tract data, there were more houses with median incomes less than 20,000/year that experienced blackouts compared those that did experience a blackout. As with many dense, urban regions, it is important to look at the data with the knowledge that much variability in the data will not be shown. Due to this fact, it is safe to assume that much of the effects on Texan residents is underrepresented, especially for dense cities such as Houston. 
+Based on the results of this investigation, it is clear that the 2021 Texas power crisis had widespread impacts across the state and even more pronounced effects in the city of Houston. From observing changes in night lights, I saw that large regions of Houston experienced major blackouts spanning more than 10km. Looking at Census tract data, more houses with median incomes below $20,000 per year experienced blackouts compared to those that did not. As with many dense urban areas, much of the variability in the data is not captured. Because of this, it is safe to assume that the effects on Texan residents—especially in cities like Houston—are likely underrepresented.
 
 

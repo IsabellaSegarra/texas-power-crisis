@@ -13,10 +13,6 @@ Barbara)
 This repository's purpose is for investigating the Texas Power Crisis that took place in February 2021 after a series of three severe storms. 
 
 It contains the following file structure:
-- [Texas power crisis quarto document]():
-Contains the analysis and maps for the study. 
-- [Texas power crisis PDF]() 
-- data: Contains all the data for this project.
 
 ```text 
 .
@@ -33,7 +29,7 @@ Contains the analysis and maps for the study.
 
 
 ## How to access the data:
-The night lights data is from [NASA's Leve-1 and Atmospheric Archive and Distribution System Distributed Active Archive Center (LAADS DAAC)] (https://ladsweb.modaps.eosdis.nasa.gov/). The roads and house/building data is from [OpenStreetMap (OSM)] (https://planet.openstreetmap.org/), an open-source collaborative project for geographic data. The socioeconomic data is from the U.S. Census
+The night lights data is from [NASA's Leve-1 and Atmospheric Archive and Distribution System Distributed Active Archive Center (LAADS DAAC)] (https://ladsweb.modaps.eosdis.nasa.gov/). The roads and house/building data is from [OpenStreetMap (OSM)] (https://planet.openstreetmap.org/), an open-source collaborative project for geographic data. The socioeconomic data is from the [U.S. Census American Community Survey] (https://www.census.gov/programs‑surveys/acs))
 
 
 ## Citations: 
