@@ -14,8 +14,7 @@ execute:
 
 # Texas Power Crisis
 
-[ADD README SCREENSHOT]
-![](filepath)
+![](/Users/isabellasegarra/Documents/MEDS/EDS-223/README-screenshot.png)
 
 ### Objective
 In this project, I investigated the February 2021 Texas power crisis, which was triggered by three severe winter storms that caused widespread blackouts across the region. To illustrate the impact of the storms, I mapped Houston’s night lights before and after the crisis and identified areas that experienced a blackout. To explore the differential effects of the power outages from a socioeconomic perspective, I compared the median household incomes of census tracts that experienced a blackout with those that did not. 
@@ -36,6 +35,7 @@ library(dplyr) # For filtering data
 library(paletteer) # For pretty colors 
 library(testthat) # For efficient workflows 
 library(kableExtra) # For pretty tables 
+library(patchwork) # For plotting 
 
 ```
 
@@ -486,20 +486,24 @@ no_blackout_soc <- ggplot(soc_no_blackout, aes(x = income_no_blackout)) +
 blackout_soc + no_blackout_soc
 
 ```
+
+
 ## Map of Census Tracts that lost power
 Below are attemps at mapping the census tracts that lost power. Tmap() is struggling to map this large of a dataset. I plan to continue to troubleshoot this error. 
 ```{r}
+#| output: false 
+
 # Attempts to fix issue 
 
-class(soc_blackout)
-nrow(soc_blackout)
-st_geometry(soc_blackout)
+#class(soc_blackout)
+#nrow(soc_blackout)
+#st_geometry(soc_blackout)
 
 # Simplify the data
-soc_blackout_simple <- st_simplify(soc_blackout, dTolerance = 100)  
+#soc_blackout_simple <- st_simplify(soc_blackout, dTolerance = 100)  
 # Filter for only relevant columns (fail to run)
-soc_blackout_simple <- soc_blackout_simple %>% 
-  select(GEOID, income_blackout)
+#soc_blackout_simple <- soc_blackout_simple %>% 
+  #select(GEOID, income_blackout)
 
       
 #tm_shape(soc_blackout) %>% 
