@@ -334,8 +334,9 @@ In this section I found the buildings in Houston, TX affected by the blackout. I
 # The CRS of 'roads' needs to be transformed to the Texas CRS
 houses <- st_transform(houses, crs = "EPSG:3083")
 
-# Join blackout highways and houses #UPDATE HERE
+# Join blackout highways and houses 
 buildings_blackout <- st_join(houses, blackout_highways, join = st_intersects, left = TRUE)
+
 # NEW WORKFLOW 
 buildings_blackout_number <- houses[blackout_highways, op = st_intersects]
 # number of buildings 
@@ -394,12 +395,14 @@ buildings_no_blackout <- houses[blackout_highways, op = st_disjoint]
 
 ### Map: Homes in Houston that lost power 
 ```{r}
+buildings_blackout_plt <- st_transform(buildings_blackout, 4326)
+
 tm_shape(buildings_blackout) + 
   tm_polygons(col = "#2f0873") +
-  #tm_basemap("CartoDB.PositronNoLabels") + # basemap won't work
   tm_title("Houses in Houston Affected by the 2021 Power Crisis", fontface = "bold") +
   tm_layout(bg.color = "white", legend.outside = TRUE) +
   tm_add_legend(type = "polygons", labels = "Experienced blackout", fill = "#2f0873", title = "Houston homes") +
+  #tm_basemap("CartoDB.PositronNoLabels") + # basemap won't work
   tm_compass(size = 0.8) +
   tm_scalebar(text.size = 0.5)
 
@@ -502,13 +505,10 @@ my_palette <- c("#8ecae6", "#219ebc", "#023047", "#ffb703", "#fb8500")
       
 tm_shape(soc_blackout) + 
   tm_polygons(fill = "income_blackout", 
-              fill.legend = tm_legend(title = "Median Income"), 
-              fill.scale = tm_scale(breaks = c(0, 50000, 100000, 150000, 20000, 300000), 
-                                    values = my_palette)) +
+              fill.legend = tm_legend(title = "Median Income")) +
   tm_title(text = "Median Income of Households Affected by Blackouts") +
-  tm_compass() +
-  tm_scale_bar() +
-  tm_basemap()
+  tm_compass(size = 0.8) +
+  tm_scalebar(text.size = 0.5)
 
 ```
 
