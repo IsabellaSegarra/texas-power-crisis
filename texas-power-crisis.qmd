@@ -335,8 +335,8 @@ In this section I found the buildings in Houston, TX affected by the blackout. I
 houses <- st_transform(houses, crs = "EPSG:3083")
 
 # Join blackout highways and houses #UPDATE HERE
-buildings_blackout <- st_join(houses, blackout_highways, join = st_intersects, left = TRUE)
-
+buildings_blackout2 <- st_join(houses, blackout_highways, join = st_intersects, left = TRUE)
+# NEW WORKFLOW 
 buildings_blackout <- houses[blackout_highways, op = st_intersects]
 # number of buildings 
 nrow(buildings_blackout)
@@ -354,7 +354,7 @@ For the estimate of number of homes that experienced blackouts, I filtered the b
 # ......Estimate number of houses that experienced blackout ......
 
 # Filter buildings_blackout for only select buildings
-residential_blackout <- buildings_blackout %>% 
+residential_blackout <- buildings_blackout2 %>% 
   filter(type %in% c("house", "apartments", "residential"))
 
 # Estimate the sum of blackouts per building type 
@@ -388,7 +388,7 @@ blackout_table %>%
 ```{r}
 #......Find buildings not affected by blackout.....
 
-buildings_no_blackout <- buildings_blackout %>% #running slow, dropping geom
+buildings_no_blackout <- buildings_blackout2 %>% #running slow, dropping geom
   filter(is.na(blackout))
 # non-affected buildings
 buildings_no_blackout <- houses[blackout_highways, op = st_disjoint]
