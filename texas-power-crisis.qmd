@@ -316,7 +316,7 @@ st_geometry_type(highway)
 
 
 ```
-
+Now I will find regions further than 200m buffer. 
 ```{r}
 #......Areas further than 200 m......
 blackout_highways <- st_difference(blackout, highway) 
@@ -335,17 +335,18 @@ In this section I found the buildings in Houston, TX affected by the blackout. I
 houses <- st_transform(houses, crs = "EPSG:3083")
 
 # Join blackout highways and houses #UPDATE HERE
-buildings_blackout2 <- st_join(houses, blackout_highways, join = st_intersects, left = TRUE)
+buildings_blackout <- st_join(houses, blackout_highways, join = st_intersects, left = TRUE)
 # NEW WORKFLOW 
-buildings_blackout <- houses[blackout_highways, op = st_intersects]
+buildings_blackout_number <- houses[blackout_highways, op = st_intersects]
 # number of buildings 
-nrow(buildings_blackout)
+homes_affected <- nrow(buildings_blackout_number)
 
 # Update column name to blackout
-buildings_blackout<- buildings_blackout %>% rename(blackout = VNP46A1.A2021047.h08v05.001.2021048091106.tif)
+buildings_blackout<- buildings_blackout %>% rename(blackout = VNP46A1.A2021038.h08v05.001.2021039064328.tif)
 
-# View the class of the new data frame 
-print(class(buildings_blackout))
+
+
+print(paste("The total number of affected homes are", homes_affected, "homes."))
 
 
 ```
@@ -354,7 +355,8 @@ For the estimate of number of homes that experienced blackouts, I filtered the b
 # ......Estimate number of houses that experienced blackout ......
 
 # Filter buildings_blackout for only select buildings
-residential_blackout <- buildings_blackout2 %>% 
+residential_blackout <- buildings_blackout %>% 
+  st_drop_geometry() %>%  # drop geometry 
   filter(type %in% c("house", "apartments", "residential"))
 
 # Estimate the sum of blackouts per building type 
@@ -367,19 +369,7 @@ residential_estimate <- residential_blackout %>%
 ```{r}
 #| echo: false
 
-# Define columns
-Type <- c("apartments", "house", "residential")
-Number <- c(609, 6275, 278)
-
-# Combine into a table
-blackout_table <- data.frame(
-  Type,
-  Number
-)
-
-# Put together with ‘kableExtra’
-blackout_table %>%
-  kable(col.names = c("Type of building", "Number of blackouts"), caption = "Table 1. Estimate of houses that experinced blackouts") %>%
+residential_estimate %>% kable(col.names = c("Type of building", "Number of blackouts"), caption = "Table 1. Estimate of residential homes that experinced blackouts") %>%
   kable_styling(bootstrap_options = "striped", full_width = FALSE)
 ```
 
@@ -388,29 +378,30 @@ blackout_table %>%
 ```{r}
 #......Find buildings not affected by blackout.....
 
-buildings_no_blackout <- buildings_blackout2 %>% #running slow, dropping geom
+buildings_no_blackout <- buildings_blackout %>% #running slow, dropping geom
   filter(is.na(blackout))
+
+# Save the number of affected homes 
+non_affected_homes <- nrow(buildings_no_blackout)
+
+print(paste("The total number of not affected homes are", non_affected_homes, "homes."))
+
 # non-affected buildings
 buildings_no_blackout <- houses[blackout_highways, op = st_disjoint]
-
-# row
-
-st_join(x = acs, y = non_affeted_homes, join = st_intersects)
-st_join(x = acs, y = affeted_homes, join = st_intersects)
 
 ```
 
 
 ### Map: Homes in Houston that lost power 
 ```{r}
-tm_shape(buildings_blackout) +
-  tm_polygons(col = "#2f0873", col.legend = tm_legend) +
-  tm_title("Houses in Houston Affected by the 2021 Power Crisis", fontface = "bold")+
-  tm_layout(bg.color = "white") +
+
+tm_shape(buildings_blackout) + 
+  tm_polygons(col = "#2f0873", title = "Houston Homes") +
+  tm_title("Houses in Houston Affected by the 2021 Power Crisis", fontface = "bold") +
+  tm_layout(bg.color = "white", legend.outside = TRUE) +
   tm_basemap("CartoDB.PositronNoLabels") +
   tm_compass(size = 0.8) +
-  tm_scalebar(text.size = 0.5) +
-  tm_add_legend(label = "Houston Homes", fill = "#2f0873", type = "polygons")
+  tm_scalebar(text.size = 0.5)
 
 ```
 
@@ -424,6 +415,7 @@ Some important information for this analysis:
 
 ```{r}
 #| output: false 
+
 
 #......Data wrangling..... 
 
@@ -456,23 +448,40 @@ if(st_crs(socieoco)$epsg != 3083) {
 ```{r}
 #.....Census tracts that experienced blackout ......
 
-soc_blackout <- st_join(socieoco, buildings_blackout, left = TRUE) 
+soc_blackout <- st_join(x = socieoco, y = buildings_blackout, join = st_intersects)
+
+#soc_blackout <- st_join(socieoco, buildings_blackout, left = TRUE) 
 
 # Rename column with median incomes to 'income_blackout'
 soc_blackout <- soc_blackout %>% rename(income_blackout = B19013m1)
 
 #.....Census tracts that did NOT experience blackout ......
 
-soc_no_blackout <- st_join(socieoco, buildings_no_blackout, left = TRUE)
+soc_no_blackout <- st_join(socieoco, buildings_no_blackout, join = st_intersects)
 
 # Rename column with median incomes to 'income_no_blackout'
 soc_no_blackout <- soc_no_blackout %>% rename(income_no_blackout = B19013m1)
 
 #..... Rejoin datasets .....
 
-# Rejoin data set. Error: vector memory limit reached. 
+# Rejoin data set. 
+
+# drop geometry columns
+soc_blackout_no_geom <- soc_blackout %>% 
+  mutate(GEOID = as.numeric(GEOID)) %>%  # overwrite GEOID
+  st_drop_geometry()
+
+soc_no_blackout_no_geom <-soc_no_blackout %>%  
+  mutate(GEOID = as.numeric(GEOID)) %>% 
+  st_drop_geometry()
+  
+
 soc_join <- soc_blackout %>% st_drop_geometry() %>%
   left_join(soc_no_blackout %>% st_drop_geometry(), by = "GEOID")
+soc_join <- st_join(soc_blackout_no_geom, soc_no_blackout_no_geom, by = "GEOID", left = TRUE)
+
+soc_join <- soc_blackout_no_geom %>%
+  left_join(soc_no_blackout_no_geom, by = "GEOID")
 
 
 # make box plot of median income with 'income_blackout' and 'income_no_blackout' data
